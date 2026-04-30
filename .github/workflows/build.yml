@@ -2,8 +2,8 @@ name: Build OpenChamber Image
 
 on:
   schedule:
-    - cron: "0 */6 * * *" # kiểm tra mỗi 6 tiếng
-  workflow_dispatch: # cho phép chạy thủ công
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
 
 jobs:
   check-and-build:
@@ -22,7 +22,6 @@ jobs:
           LATEST=$(curl -s https://api.github.com/repos/openchamber/openchamber/releases/latest | jq -r .tag_name)
           echo "version=$LATEST" >> "$GITHUB_OUTPUT"
 
-          # kiểm tra đã build version này chưa
           CURRENT=""
           if [ -f .current-version ]; then
             CURRENT=$(cat .current-version)
@@ -49,11 +48,17 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Clone and patch source
+        if: steps.release.outputs.skip == 'false'
+        run: |
+          git clone --depth 1 --branch ${{ steps.release.outputs.version }} https://github.com/openchamber/openchamber.git openchamber-src
+          sed -i 's/bun install --frozen-lockfile/bun install/' openchamber-src/Dockerfile
+
       - name: Build and push
         if: steps.release.outputs.skip == 'false'
         uses: docker/build-push-action@v6
         with:
-          context: "https://github.com/openchamber/openchamber.git#${{ steps.release.outputs.version }}"
+          context: ./openchamber-src
           push: true
           tags: |
             ghcr.io/${{ github.repository_owner }}/openchamber:${{ steps.release.outputs.version }}
