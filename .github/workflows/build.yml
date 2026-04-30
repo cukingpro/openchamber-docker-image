@@ -36,6 +36,10 @@ jobs:
         if: steps.release.outputs.skip == 'true'
         run: echo "Version ${{ steps.release.outputs.version }} already built. Skipping."
 
+      - name: Set up QEMU
+        if: steps.release.outputs.skip == 'false'
+        uses: docker/setup-qemu-action@v3
+
       - name: Set up Docker Buildx
         if: steps.release.outputs.skip == 'false'
         uses: docker/setup-buildx-action@v3
@@ -59,6 +63,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: ./openchamber-src
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: |
             ghcr.io/${{ github.repository_owner }}/openchamber:${{ steps.release.outputs.version }}
